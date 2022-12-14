@@ -1,0 +1,10 @@
+version: '3.7'
+services:
+  gitea:
+    container_name: gitea_serv
+    image: gitea:sna
+    restart: always
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - "/home/sna/gitea_sna/docker/gitea_volume:/etc/gitea:Z"

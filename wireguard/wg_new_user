@@ -1,0 +1,50 @@
+#!/bin/bash
+
+if test "$(id -u)" != "0"
+then
+        echo "Root privileges required"
+        exit 1
+fi
+
+username="$1"
+conf="/etc/wireguard/wg0.conf"
+new_ip="$(generate_ip)"
+
+if test "$username" == ""
+then
+        echo "Username required"
+        exit 1
+fi
+
+# generate keys
+wg genkey | tee /etc/wireguard/users/"$username"_privatekey | wg pubkey | tee /etc/wireguard/users/"$username"_publickey >/dev/null
+
+# add user
+cat >>$conf <<EOF
+
+# $username
+[Peer]
+PublicKey = $(cat /etc/wireguard/users/"$username"_publickey)
+AllowedIPs = $new_ip/32
+EOF
+
+# create client config
+cat >/etc/wireguard/clients/"$username".conf <<EOF
+[Interface]
+PrivateKey = $(cat /etc/wireguard/users/"$username"_privatekey)
+Address = $new_ip/32
+DNS = 1.1.1.1
+
+[Peer]
+PublicKey = $(cat /etc/wireguard/publickey)
+Endpoint = @@@server_ip:51830
+AllowedIPs = 0.0.0.0/0
+PersistentKeepalive = 20
+EOF
+
+# update service
+systemctl restart wg-quick@wg0
+systemctl status wg-quick@wg0
+
+# generate qr code for user
+qrencode -t ansiutf8 </etc/wireguard/clients/"$username".conf
